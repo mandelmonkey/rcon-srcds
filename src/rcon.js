@@ -147,7 +147,19 @@ class SourceRCON {
                 // Because server will response twice(0x00 and 0x02) if we send authenticate packet(0x03)
                 // but we need 0x02 for confirm
                 if (type === Protocol.SERVERDATA_AUTH && decodedPacket.type !== Protocol.SERVERDATA_AUTH_RESPONSE) {
-                    return;
+                    /**
+                     * Since May 2020 reports have arisen about CSGO servers sending 0x00 but not confirming auth
+                     * with 0x02. This is a temporary solution that solves the problem.
+                     */
+                    if (decodedPacket.body !== '') {
+                        if (decodedPacket.body === '\u0000\u0000\n\u0000\u0000\u0000<\n\u0000\u0000\u0002\u0000\u0000\u0000') {
+                            resolve(true)
+                        } else {
+                            reject(Error('Unable to authenticate'))
+                        }
+                        this.connection.removeListener('data', onData)
+                    }
+                    return
                 } else if (type === Protocol.SERVERDATA_AUTH && decodedPacket.type === Protocol.SERVERDATA_AUTH_RESPONSE) {
                     if (decodedPacket.id === Protocol.ID_AUTH) { // Request ID !== -1 mean success!
                         resolve('success');
